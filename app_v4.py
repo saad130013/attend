@@ -1,0 +1,58 @@
+import streamlit as st
+import pandas as pd
+
+# Load attendance data
+@st.cache_data
+def load_data():
+    df = pd.read_excel("Book2.xlsx")
+    return df
+
+df = load_data()
+
+st.title("نظام معلومات الموظف وسجل الحضور")
+
+# البحث برقم الهوية (ID_Number)
+search_input = st.text_input("أدخل رقم الهوية الوطنية:")
+
+result = df[df['ID#'].astype(str).str.contains(search_input)]
+
+if not result.empty:
+    st.subheader("المعلومات العامة للموظف:")
+    general_fields = [
+        "EMP#", "NAME (ENG)", "NAME (AR)", "GENDER", "NATIONALITY",
+        "ID#", "COMPANY", "POSITION", "POSITION_AR", "MRN", "LOCATION"
+    ]
+    # استخدام الأعمدة الموجودة فعليًا
+    available_fields = [col for col in general_fields if col in result.columns]
+    st.dataframe(result[available_fields].drop_duplicates())
+
+    if st.button("عرض سجل الحضور الأسبوعي"):
+        st.subheader("سجل الحضور الأسبوعي:")
+        attendance_days = result[["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"]]
+        st.dataframe(attendance_days)
+
+        # حساب عدد أيام الغياب من الأحد إلى الخميس فقط
+        work_days = ["SUN", "MON", "TUE", "WED", "THU"]
+        absence_count = (result[work_days] == 0).sum(axis=1).values[0]
+        st.info(f"عدد أيام الغياب (من الأحد إلى الخميس): {absence_count} يوم")
+else:
+    if search_input:
+        st.warning("لم يتم العثور على الموظف برقم الهوية.")
+
+# زر عرض الموظفين الذين يداومون الجمعة أو السبت أو الاثنين
+if st.button("عرض الموظفين الذين يداومون الجمعة أو السبت أو الاثنين"):
+    friday = df[(df['FRI'] == 1) & (df['SAT'] != 1)]
+    saturday = df[(df['SAT'] == 1) & (df['FRI'] != 1)]
+    monday_plus = df[(df['MON'] == 1) & ((df['FRI'] == 1) | (df['SAT'] == 1))]
+
+    final = pd.concat([
+        friday.assign(ملاحظة="مداوم يوم الجمعة فقط"),
+        saturday.assign(ملاحظة="مداوم يوم السبت فقط"),
+        monday_plus.assign(ملاحظة="مداوم الاثنين + الجمعة/السبت")
+    ])
+
+    display_fields = ["EMP#", "ID#", "NAME (ENG)", "NAME (AR)", "FRI", "SAT", "MON", "ملاحظة"]
+    available_display = [col for col in display_fields if col in final.columns]
+
+    st.subheader("نتائج الموظفين الخاصة:")
+    st.dataframe(final[available_display])
