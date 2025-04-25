@@ -11,25 +11,26 @@ df = load_data()
 
 st.title("نظام معلومات الموظف وسجل الحضور")
 
-# البحث برقم الموظف أو الاسم
-search_option = st.radio("ابحث بواسطة:", ["رقم الموظف", "اسم الموظف"])
-search_input = st.text_input("أدخل البيانات:")
+# البحث برقم الهوية (ID#)
+search_input = st.text_input("أدخل رقم الهوية (ID#):")
 
-if search_option == "رقم الموظف":
-    result = df[df['EMP#'].astype(str).str.contains(search_input)]
-elif search_option == "اسم الموظف":
-    result = df[df['NAME (AR)'].astype(str).str.contains(search_input) | df['NAME (ENG)'].astype(str).str.contains(search_input)]
+result = df[df['ID#'].astype(str).str.contains(search_input)]
 
 if not result.empty:
     st.subheader("معلومات الموظف العامة:")
-    st.dataframe(result[["EMP#", "NAME (ENG)", "NAME (AR)", "NATIONALITY", "POSITION", "COMPANY"]].drop_duplicates())
+    st.dataframe(result[["EMP#", "ID#", "NAME (ENG)", "NAME (AR)", "NATIONALITY", "POSITION", "COMPANY"]].drop_duplicates())
 
     if st.button("عرض سجل الحضور الأسبوعي"):
         st.subheader("سجل الحضور الأسبوعي:")
-        st.dataframe(result[["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"]])
+        attendance_days = result[["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"]]
+        st.dataframe(attendance_days)
+
+        # حساب عدد أيام الغياب
+        absence_count = (attendance_days == 0).sum(axis=1).values[0]
+        st.info(f"عدد أيام الغياب خلال الأسبوع: {absence_count} يوم")
 else:
     if search_input:
-        st.warning("لم يتم العثور على الموظف.")
+        st.warning("لم يتم العثور على الموظف برقم الهوية.")
 
 # زر عرض الموظفين الذين يداومون جمعة أو سبت أو اثنين
 if st.button("عرض الموظفين الذين يداومون الجمعة أو السبت أو الاثنين"):
@@ -44,4 +45,4 @@ if st.button("عرض الموظفين الذين يداومون الجمعة أ�
     ])
 
     st.subheader("نتائج الموظفين الخاصة:")
-    st.dataframe(final[["EMP#", "NAME (ENG)", "NAME (AR)", "FRI", "SAT", "MON", "ملاحظة"]])
+    st.dataframe(final[["EMP#", "ID#", "NAME (ENG)", "NAME (AR)", "FRI", "SAT", "MON", "ملاحظة"]])
